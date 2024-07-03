@@ -57,8 +57,7 @@ def get_api_answer(timestamp):
     """Запрос к API."""
     params = {'from_date': timestamp}
     logging.debug(
-        f'Отправляю запрос к API - {ENDPOINT}. '
-        f'Параметры запроса: {HEADERS}, {params}.')
+        f'Отправляю запрос к API - {ENDPOINT}. Параметры запроса: {params}.')
 
     try:
         response = requests.get(
@@ -68,7 +67,7 @@ def get_api_answer(timestamp):
     except requests.RequestException as error:
         raise RequestError(
             f'Сбой в работе программы: Эндпоинт {ENDPOINT} недоступен. {error}'
-            f' Параметры запроса: {HEADERS}, {params}.'
+            f' Параметры запроса: {params}.'
         )
 
     if response.status_code != HTTPStatus.OK:
@@ -129,7 +128,7 @@ def main():
     check_tokens()
     bot = TeleBot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
-    previous_message_error = ''
+    last_message_error = ''
 
     while True:
         try:
@@ -139,18 +138,21 @@ def main():
             if homeworks:
                 current_status = parse_status(homeworks[0])
                 send_message(bot, current_status)
+                last_message_error = ''
             else:
                 logging.debug('Новый статус проверки работы отсутствует.')
 
-            timestamp = response.get('current_date', timestamp)
+            timestamp = response.get(
+                'current_date', int(time.time())
+            )
 
         except Exception as error:
             current_message_error = f'Сбой в работе программы: {error}.'
             logging.error(current_message_error, exc_info=True)
 
-            if previous_message_error != current_message_error:
+            if last_message_error != current_message_error:
                 send_message(TELEGRAM_CHAT_ID, current_message_error)
-                previous_message_error = current_message_error
+                last_message_error = current_message_error
 
         finally:
             time.sleep(RETRY_PERIOD)
